@@ -5,24 +5,16 @@
 
 /**
  * Define as rotas disponíveis na aplicação e seus parâmetros
- * @property Login - Tela de login
- * @property Register - Tela de registro
- * @property Home - Tela inicial da aplicação
- * @property CreateAppointment - Tela de criação de consulta
- * @property Profile - Tela de perfil do usuário
- * @property AdminDashboard - Tela do painel de administração
- * @property DoctorDashboard - Tela do painel do médico
- * @property PatientDashboard - Tela do painel do paciente
- * @property UserManagement - Tela de gerenciamento de usuários
+ * @property DashBoard - Tela de principal do aplicativo
+ * @property RegisterLocation - Tela de registro de localização
+ * @property AlertRecors - Tela histórica de alertas
+ * @property Advices - Tela de conselhos e dicas
+ * @property Community - Tela da comunidade
  */
 export type RootStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  Home: undefined;
-  CreateAppointment: undefined;
-  Profile: undefined;
-  AdminDashboard: undefined;
-  DoctorDashboard: undefined;
-  PatientDashboard: undefined;
-  UserManagement: undefined;
+  DashBoard: undefined;
+  RegisterLocation: undefined;
+  AlertRecords: undefined;
+  Advices: undefined;
+  Community: undefined;
 }; 

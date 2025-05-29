@@ -5,15 +5,13 @@ import React, { useState } from 'react';
 import { ScrollView, ViewStyle } from 'react-native';
 import { Button, Input } from 'react-native-elements';
 import styled from 'styled-components/native';
-import DoctorList from '../components/DoctorList';
 import Header from '../components/Header';
-import TimeSlotList from '../components/TimeSlotList';
 import { useAuth } from '../contexts/AuthContext';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 
-type CreateAppointmentScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'CreateAppointment'>;
+type RegisterLocationScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'RegisterLocation'>;
 };
 
 interface Appointment {
@@ -69,9 +67,9 @@ const availableDoctors: Doctor[] = [
   },
 ];
 
-const CreateAppointmentScreen: React.FC = () => {
+const RegisterLocationScreen: React.FC = () => {
   const { user } = useAuth();
-  const navigation = useNavigation<CreateAppointmentScreenProps['navigation']>();
+  const navigation = useNavigation<RegisterLocationScreenProps['navigation']>();
   const [date, setDate] = useState('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -135,17 +133,8 @@ const CreateAppointmentScreen: React.FC = () => {
         />
 
         <SectionTitle>Selecione um Horário</SectionTitle>
-        <TimeSlotList
-          onSelectTime={setSelectedTime}
-          selectedTime={selectedTime}
-        />
 
         <SectionTitle>Selecione um Médico</SectionTitle>
-        <DoctorList
-          doctors={availableDoctors}
-          onSelectDoctor={setSelectedDoctor}
-          selectedDoctorId={selectedDoctor?.id}
-        />
 
         {error ? <ErrorText>{error}</ErrorText> : null}
 
@@ -216,4 +205,4 @@ const ErrorText = styled.Text`
   margin-bottom: 10px;
 `;
 
-export default CreateAppointmentScreen;
+export default RegisterLocationScreen;

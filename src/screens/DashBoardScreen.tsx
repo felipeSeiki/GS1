@@ -10,26 +10,20 @@ import { useAuth } from '../contexts/AuthContext';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 
-type AdminDashboardScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'AdminDashboard'>;
+type DashboardScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'DashBoard'>;
 };
 
 interface Appointment {
   id: string;
   patientId: string;
+  patientName: string;
   doctorId: string;
   doctorName: string;
   date: string;
   time: string;
   specialty: string;
   status: 'pending' | 'confirmed' | 'cancelled';
-}
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'doctor' | 'patient';
 }
 
 interface StyledProps {
@@ -58,41 +52,28 @@ const getStatusText = (status: string) => {
   }
 };
 
-const AdminDashboardScreen: React.FC = () => {
+const DashboardScreen: React.FC = () => {
   const { user, signOut } = useAuth();
-  const navigation = useNavigation<AdminDashboardScreenProps['navigation']>();
+  const navigation = useNavigation<DashboardScreenProps['navigation']>();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadAppointments = async () => {
     try {
-      // Carrega consultas
       const storedAppointments = await AsyncStorage.getItem('@MedicalApp:appointments');
       if (storedAppointments) {
         const allAppointments: Appointment[] = JSON.parse(storedAppointments);
-        setAppointments(allAppointments);
-      }
-
-      // Carrega usuários
-      const storedUsers = await AsyncStorage.getItem('@MedicalApp:users');
-      if (storedUsers) {
-        const allUsers: User[] = JSON.parse(storedUsers);
-        setUsers(allUsers);
+        const doctorAppointments = allAppointments.filter(
+          (appointment) => appointment.doctorId === user?.id
+        );
+        setAppointments(doctorAppointments);
       }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro ao carregar consultas:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  // Carrega os dados quando a tela estiver em foco
-  useFocusEffect(
-    React.useCallback(() => {
-      loadData();
-    }, [])
-  );
 
   const handleUpdateStatus = async (appointmentId: string, newStatus: 'confirmed' | 'cancelled') => {
     try {
@@ -106,50 +87,42 @@ const AdminDashboardScreen: React.FC = () => {
           return appointment;
         });
         await AsyncStorage.setItem('@MedicalApp:appointments', JSON.stringify(updatedAppointments));
-        loadData(); // Recarrega os dados
+        loadAppointments(); // Recarrega a lista
       }
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
     }
   };
 
+  // Carrega as consultas quando a tela estiver em foco
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAppointments();
+    }, [])
+  );
+
   return (
     <Container>
       <Header />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Title>Painel Administrativo</Title>
+        <Title>Minhas Consultas</Title>
 
-        <Button
-          title="Gerenciar Usuários"
-          onPress={() => navigation.navigate('UserManagement')}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
-
-        <Button
-          title="Meu Perfil"
-          onPress={() => navigation.navigate('Profile')}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
-
-        <SectionTitle>Últimas Consultas</SectionTitle>
         {loading ? (
-          <LoadingText>Carregando dados...</LoadingText>
+          <LoadingText>Carregando consultas...</LoadingText>
         ) : appointments.length === 0 ? (
           <EmptyText>Nenhuma consulta agendada</EmptyText>
         ) : (
           appointments.map((appointment) => (
             <AppointmentCard key={appointment.id}>
               <ListItem.Content>
-                <ListItem.Title style={styles.doctorName as TextStyle}>
-                  {appointment.doctorName}
+                <ListItem.Title style={styles.patientName as TextStyle}>
+                  Paciente: {appointment.patientName || 'Nome não disponível'}
                 </ListItem.Title>
-                <ListItem.Subtitle style={styles.specialty as TextStyle}>
-                  {appointment.specialty}
-                </ListItem.Subtitle>
-                <Text style={styles.dateTime as TextStyle}>
+                <ListItem.Subtitle style={styles.dateTime as TextStyle}>
                   {appointment.date} às {appointment.time}
+                </ListItem.Subtitle>
+                <Text style={styles.specialty as TextStyle}>
+                  {appointment.specialty}
                 </Text>
                 <StatusBadge status={appointment.status}>
                   <StatusText status={appointment.status}>
@@ -216,20 +189,20 @@ const styles = {
     backgroundColor: theme.colors.error,
     paddingVertical: 8,
   },
-  doctorName: {
-    fontSize: 18,
+  patientName: {
+    fontSize: 16,
     fontWeight: '700',
     color: theme.colors.text,
   },
   specialty: {
     fontSize: 14,
+    fontWeight: '500',
     color: theme.colors.text,
-    marginTop: 4,
   },
   dateTime: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '700',
     color: theme.colors.text,
-    marginTop: 4,
   },
 };
 
@@ -244,14 +217,6 @@ const Title = styled.Text`
   color: ${theme.colors.text};
   margin-bottom: 20px;
   text-align: center;
-`;
-
-const SectionTitle = styled.Text`
-  font-size: 20px;
-  font-weight: bold;
-  color: ${theme.colors.text};
-  margin-bottom: 15px;
-  margin-top: 10px;
 `;
 
 const AppointmentCard = styled(ListItem)`
@@ -297,4 +262,4 @@ const ButtonContainer = styled.View`
   margin-top: 8px;
 `;
 
-export default AdminDashboardScreen;
+export default DashboardScreen;

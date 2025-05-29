@@ -10,20 +10,26 @@ import { useAuth } from '../contexts/AuthContext';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 
-type PatientDashboardScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'PatientDashboard'>;
+type AdvicesScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Advices'>;
 };
 
 interface Appointment {
   id: string;
   patientId: string;
-  patientName: string;
   doctorId: string;
   doctorName: string;
   date: string;
   time: string;
   specialty: string;
   status: 'pending' | 'confirmed' | 'cancelled';
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'doctor' | 'patient';
 }
 
 interface StyledProps {
@@ -52,81 +58,106 @@ const getStatusText = (status: string) => {
   }
 };
 
-const PatientDashboardScreen: React.FC = () => {
+const AdvicesScreen: React.FC = () => {
   const { user, signOut } = useAuth();
-  const navigation = useNavigation<PatientDashboardScreenProps['navigation']>();
+  const navigation = useNavigation<AdvicesScreenProps['navigation']>();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadAppointments = async () => {
+  const loadData = async () => {
     try {
-      const storedAppointments = await AsyncStorage.getItem('@MedicalApp:appointments');
+      // Carrega consultas
+      const storedAppointments = await AsyncStorage.getItem('@EnviromentApp:appointments');
       if (storedAppointments) {
         const allAppointments: Appointment[] = JSON.parse(storedAppointments);
-        const userAppointments = allAppointments.filter(
-          (appointment) => appointment.patientId === user?.id
-        );
-        setAppointments(userAppointments);
+        setAppointments(allAppointments);
+      }
+
+      // Carrega usuários
+      const storedUsers = await AsyncStorage.getItem('@EnviromentApp:users');
+      if (storedUsers) {
+        const allUsers: User[] = JSON.parse(storedUsers);
+        setUsers(allUsers);
       }
     } catch (error) {
-      console.error('Erro ao carregar consultas:', error);
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Carrega as consultas quando a tela estiver em foco
+  // Carrega os dados quando a tela estiver em foco
   useFocusEffect(
     React.useCallback(() => {
-      loadAppointments();
+      loadData();
     }, [])
   );
+
+  const handleUpdateStatus = async (appointmentId: string, newStatus: 'confirmed' | 'cancelled') => {
+    try {
+      const storedAppointments = await AsyncStorage.getItem('@EnviromentApp:appointments');
+      if (storedAppointments) {
+        const allAppointments: Appointment[] = JSON.parse(storedAppointments);
+        const updatedAppointments = allAppointments.map(appointment => {
+          if (appointment.id === appointmentId) {
+            return { ...appointment, status: newStatus };
+          }
+          return appointment;
+        });
+        await AsyncStorage.setItem('@EnviromentApp:appointments', JSON.stringify(updatedAppointments));
+        loadData(); // Recarrega os dados
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+    }
+  };
 
   return (
     <Container>
       <Header />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Title>Minhas Consultas</Title>
+        <Title>Painel Administrativo</Title>
 
-        <Button
-          title="Agendar Nova Consulta"
-          onPress={() => navigation.navigate('CreateAppointment')}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
-
-        <Button
-          title="Meu Perfil"
-          onPress={() => navigation.navigate('Profile')}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
-
+        <SectionTitle>Últimas Consultas</SectionTitle>
         {loading ? (
-          <LoadingText>Carregando consultas...</LoadingText>
+          <LoadingText>Carregando dados...</LoadingText>
         ) : appointments.length === 0 ? (
           <EmptyText>Nenhuma consulta agendada</EmptyText>
         ) : (
           appointments.map((appointment) => (
             <AppointmentCard key={appointment.id}>
               <ListItem.Content>
-                <ListItem.Title style={styles.patientName as TextStyle}>
-                  Paciente: {appointment.patientName}
-                </ListItem.Title>
-                <ListItem.Subtitle style={styles.dateTime as TextStyle}>
-                  {appointment.date} às {appointment.time}
-                </ListItem.Subtitle>
-                <Text style={styles.doctorName as TextStyle}>
+                <ListItem.Title style={styles.doctorName as TextStyle}>
                   {appointment.doctorName}
-                </Text>
-                <Text style={styles.specialty as TextStyle}>
+                </ListItem.Title>
+                <ListItem.Subtitle style={styles.specialty as TextStyle}>
                   {appointment.specialty}
+                </ListItem.Subtitle>
+                <Text style={styles.dateTime as TextStyle}>
+                  {appointment.date} às {appointment.time}
                 </Text>
                 <StatusBadge status={appointment.status}>
                   <StatusText status={appointment.status}>
                     {getStatusText(appointment.status)}
                   </StatusText>
                 </StatusBadge>
+                {appointment.status === 'pending' && (
+                  <ButtonContainer>
+                    <Button
+                      title="Confirmar"
+                      onPress={() => handleUpdateStatus(appointment.id, 'confirmed')}
+                      containerStyle={styles.actionButton as ViewStyle}
+                      buttonStyle={styles.confirmButton}
+                    />
+                    <Button
+                      title="Cancelar"
+                      onPress={() => handleUpdateStatus(appointment.id, 'cancelled')}
+                      containerStyle={styles.actionButton as ViewStyle}
+                      buttonStyle={styles.cancelButton}
+                    />
+                  </ButtonContainer>
+                )}
               </ListItem.Content>
             </AppointmentCard>
           ))
@@ -159,10 +190,17 @@ const styles = {
     backgroundColor: theme.colors.error,
     paddingVertical: 12,
   },
-  patientName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.text,
+  actionButton: {
+    marginTop: 8,
+    width: '48%',
+  },
+  confirmButton: {
+    backgroundColor: theme.colors.success,
+    paddingVertical: 8,
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.error,
+    paddingVertical: 8,
   },
   doctorName: {
     fontSize: 18,
@@ -192,6 +230,14 @@ const Title = styled.Text`
   color: ${theme.colors.text};
   margin-bottom: 20px;
   text-align: center;
+`;
+
+const SectionTitle = styled.Text`
+  font-size: 20px;
+  font-weight: bold;
+  color: ${theme.colors.text};
+  margin-bottom: 15px;
+  margin-top: 10px;
 `;
 
 const AppointmentCard = styled(ListItem)`
@@ -231,4 +277,10 @@ const StatusText = styled.Text<StyledProps>`
   font-weight: 500;
 `;
 
-export default PatientDashboardScreen; 
+const ButtonContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 8px;
+`;
+
+export default AdvicesScreen;
