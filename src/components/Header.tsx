@@ -1,77 +1,45 @@
 import React from 'react';
-import { Avatar } from 'react-native-elements';
+import { TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
-import { useAuth } from '../contexts/AuthContext';
+import { AntDesign } from '@expo/vector-icons';
 import theme from '../styles/theme';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
-export const HeaderContainer = styled.View`
-  background-color: ${theme.colors.background};
-  padding: 16px;
-  border-bottom-width: 1px;
-  border-bottom-color: ${theme.colors.border};
-`;
+type HeaderProps = {
+  backTo?: keyof RootStackParamList;
+};
 
-export const HeaderTitle = styled.Text`
-  font-size: 24px;
-  font-weight: bold;
-  color: ${theme.colors.text};
-`;
+const Header: React.FC<HeaderProps> = ({ backTo }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-const Header: React.FC = () => {
-  const { user } = useAuth();
-
-  if (!user) return null;
+  const handleBack = () => {
+    if (backTo) {
+      navigation.navigate(backTo);
+    } else {
+      navigation.goBack();
+    }
+  };
 
   return (
     <Container>
-      <UserInfo>
-        <Avatar
-          size="medium"
-          rounded
-          source={{ uri: user.image }}
-          containerStyle={styles.avatar}
-        />
-        <TextContainer>
-          <WelcomeText>Bem-vindo(a),</WelcomeText>
-          <UserName>{user.name}</UserName>
-        </TextContainer>
-      </UserInfo>
+      {(backTo || navigation.canGoBack()) && (
+        <TouchableOpacity onPress={handleBack}>
+          <AntDesign name="leftcircle" size={24} color="black" />
+        </TouchableOpacity>
+      )}
     </Container>
   );
-};
-
-const styles = {
-  avatar: {
-    backgroundColor: theme.colors.primary,
-  },
 };
 
 const Container = styled.View`
   background-color: ${theme.colors.background};
   padding: 16px;
-  border-bottom-width: 1px;
-  border-bottom-color: ${theme.colors.border};
-`;
-
-const UserInfo = styled.View`
+  padding-top: 14px;
   flex-direction: row;
+  justify-content: space-between;
   align-items: center;
-`;
-
-const TextContainer = styled.View`
-  margin-left: 12px;
-`;
-
-const WelcomeText = styled.Text`
-  font-size: 14px;
-  color: ${theme.colors.text};
-  opacity: 0.7;
-`;
-
-const UserName = styled.Text`
-  font-size: 18px;
-  font-weight: bold;
-  color: ${theme.colors.text};
 `;
 
 export default Header;
