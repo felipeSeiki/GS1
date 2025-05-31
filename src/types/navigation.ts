@@ -11,10 +11,12 @@
  * @property Advices - Tela de conselhos e dicas
  * @property Community - Tela da comunidade
  */
+import { Location } from '../services/location';
+
 export type RootStackParamList = {
-  DashBoard: undefined;
+  DashBoard: { selectedLocation?: Location } | undefined;
   RegisterLocation: undefined;
   AlertRecords: undefined;
   Advices: undefined;
   Community: undefined;
-}; 
+};

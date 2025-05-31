@@ -1,182 +1,256 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  Platform,
+  StyleSheet,
+  View,
+  Keyboard,
+  KeyboardAvoidingView
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
-import { ScrollView, ViewStyle } from 'react-native';
-import { Button, Input } from 'react-native-elements';
 import styled from 'styled-components/native';
 import Header from '../components/Header';
-import { useAuth } from '../contexts/AuthContext';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
+import { locationService, Location } from '../services/location';
+import { TextInput } from 'react-native';
+
+interface ButtonProps {
+  disabled?: boolean;
+}
 
 type RegisterLocationScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'RegisterLocation'>;
 };
 
-interface Appointment {
-  id: string;
-  patientId: string;
-  patientName: string;
-  doctorId: string;
-  doctorName: string;
-  date: string;
-  time: string;
-  specialty: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
-}
-
-interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-  image: string;
-}
-
-// Lista de médicos disponíveis
-const availableDoctors: Doctor[] = [
-  {
-    id: '1',
-    name: 'Dr. João Silva',
-    specialty: 'Cardiologia',
-    image: 'https://randomuser.me/api/portraits/men/1.jpg',
-  },
-  {
-    id: '2',
-    name: 'Dra. Maria Santos',
-    specialty: 'Pediatria',
-    image: 'https://randomuser.me/api/portraits/women/1.jpg',
-  },
-  {
-    id: '3',
-    name: 'Dr. Pedro Oliveira',
-    specialty: 'Ortopedia',
-    image: 'https://randomuser.me/api/portraits/men/2.jpg',
-  },
-  {
-    id: '4',
-    name: 'Dra. Ana Costa',
-    specialty: 'Dermatologia',
-    image: 'https://randomuser.me/api/portraits/women/2.jpg',
-  },
-  {
-    id: '5',
-    name: 'Dr. Carlos Mendes',
-    specialty: 'Oftalmologia',
-    image: 'https://randomuser.me/api/portraits/men/3.jpg',
-  },
-];
-
 const RegisterLocationScreen: React.FC = () => {
-  const { user } = useAuth();
   const navigation = useNavigation<RegisterLocationScreenProps['navigation']>();
-  const [date, setDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [savedLocations, setSavedLocations] = useState<Location[]>([]);
+  const [searchResults, setSearchResults] = useState<Location[]>([]);
 
-  const handleCreateAppointment = async () => {
+  // Load saved locations
+  const loadSavedLocations = useCallback(async () => {
     try {
-      setLoading(true);
-      setError('');
+      const locations = await locationService.getLocations();
+      setSavedLocations(locations);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar as localizações salvas');
+    }
+  }, []);
 
-      if (!date || !selectedTime || !selectedDoctor) {
-        setError('Por favor, preencha a data e selecione um médico e horário');
-        return;
-      }
+  useEffect(() => {
+    loadSavedLocations();
+  }, [loadSavedLocations]);
 
-      // Recupera consultas existentes
-      const storedAppointments = await AsyncStorage.getItem('@MedicalApp:appointments');
-      const appointments: Appointment[] = storedAppointments ? JSON.parse(storedAppointments) : [];
+  // Search cities with debounce
+  const searchCities = useCallback(async (term: string) => {
+    if (term.length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-      // Cria nova consulta
-      const newAppointment: Appointment = {
-        id: Date.now().toString(),
-        patientId: user?.id || '',
-        patientName: user?.name || '',
-        doctorId: selectedDoctor.id,
-        doctorName: selectedDoctor.name,
-        date,
-        time: selectedTime,
-        specialty: selectedDoctor.specialty,
-        status: 'pending',
-      };
+    setLoading(true);
+    try {
+      const results = await locationService.searchCities(term);
+      setSearchResults(results);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível buscar as cidades');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      // Adiciona nova consulta à lista
-      appointments.push(newAppointment);
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      searchCities(searchTerm);
+    }, 300);
 
-      // Salva lista atualizada
-      await AsyncStorage.setItem('@MedicalApp:appointments', JSON.stringify(appointments));
+    return () => clearTimeout(debounceTimeout);
+  }, [searchTerm, searchCities]);
 
-      alert('Consulta agendada com sucesso!');
-      navigation.goBack();
-    } catch (err) {
-      setError('Erro ao agendar consulta. Tente novamente.');
+  // Save location
+  const handleSaveLocation = async (location: Location) => {
+    setLoading(true);
+    try {
+      await locationService.saveLocation(location);
+      await loadSavedLocations();
+      setSearchTerm('');
+      setSearchResults([]);
+      Alert.alert('Sucesso', 'Localização salva com sucesso!');
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar a localização');
     } finally {
       setLoading(false);
     }
   };
 
+  // Delete location
+  const handleDeleteLocation = async (locationId: string) => {
+    Alert.alert(
+      'Deletar Localização',
+      'Tem certeza que deseja deletar esta localização?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Deletar',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await locationService.deleteLocation(locationId);
+              setSavedLocations(prev => prev.filter(loc => loc.id !== locationId));
+            } catch (error) {
+              Alert.alert('Erro', 'Não foi possível deletar a localização');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Navigate to Dashboard with location data
+  const handleLocationPress = (location: Location) => {
+    navigation.navigate('DashBoard', { selectedLocation: location });
+  };
+
+  const handleInputFocus = useCallback(() => {
+    // Clear results when focusing the input
+    setSearchResults([]);
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    // Hide keyboard when blurring the input
+    Keyboard.dismiss();
+  }, []);
+
   return (
     <Container>
-      <Header />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Title>Agendar Consulta</Title>
+      <Header backTo="DashBoard" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Title>Buscar Cidade</Title>
 
-        <Input
-          placeholder="Data (DD/MM/AAAA)"
-          value={date}
-          onChangeText={setDate}
-          containerStyle={styles.input}
-          keyboardType="numeric"
-        />
+          <SearchInput>
+            <TextInput
+              placeholder="Digite o nome da cidade"
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              style={styles.input}
+              placeholderTextColor={theme.colors.secondary}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              returnKeyType="search"
+              autoCapitalize="words"
+              autoCorrect={false}
+              accessible={true}
+              accessibilityLabel="Campo de busca de cidade"
+              accessibilityHint="Digite o nome da cidade para buscar"
+            />
+          </SearchInput>
 
-        <SectionTitle>Selecione um Horário</SectionTitle>
+          {loading && <ActivityIndicator size="large" color={theme.colors.primary} />}
 
-        <SectionTitle>Selecione um Médico</SectionTitle>
+          {searchResults.length > 0 && (
+            <View>
+              <SectionTitle>Resultados da Busca</SectionTitle>
+              {searchResults.map((result) => (
+                <TouchableOpacity
+                  key={result.id}
+                  onPress={() => handleLocationPress(result)}
+                  accessible={true}
+                  accessibilityLabel={`${result.city}, ${result.state}`}
+                  accessibilityHint="Toque duas vezes para ver detalhes do clima"
+                >
+                  <LocationCard>
+                    <LocationInfo>
+                      <CityName>{result.city}</CityName>
+                      <StateText>{result.state}</StateText>
+                      {result.temperature && (
+                        <TemperatureText>{result.temperature}°C</TemperatureText>
+                      )}
+                    </LocationInfo>
+                    <SaveButton onPress={() => handleSaveLocation(result)}>
+                      <SaveButtonText>Salvar</SaveButtonText>
+                    </SaveButton>
+                  </LocationCard>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-        {error ? <ErrorText>{error}</ErrorText> : null}
-
-        <Button
-          title="Agendar"
-          onPress={handleCreateAppointment}
-          loading={loading}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
-
-        <Button
-          title="Cancelar"
-          onPress={() => navigation.goBack()}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.cancelButton}
-        />
-      </ScrollView>
+          {savedLocations.length > 0 && (
+            <View>
+              <SectionTitle>Localizações Salvas</SectionTitle>
+              {savedLocations.map((location) => (
+                <LocationCard key={location.id}>
+                  <TouchableOpacity
+                    style={styles.locationButton}
+                    onPress={() => handleLocationPress(location)}
+                    accessible={true}
+                    accessibilityLabel={`${location.city}, ${location.state}`}
+                    accessibilityHint="Toque duas vezes para ver detalhes do clima"
+                  >
+                    <LocationInfo>
+                      <CityName>{location.city}</CityName>
+                      <StateText>{location.state}</StateText>
+                      {location.temperature && (
+                        <TemperatureText>{location.temperature}°C</TemperatureText>
+                      )}
+                      <LastUpdate>
+                        Última atualização: {new Date(location.lastUpdate || '').toLocaleDateString()}
+                      </LastUpdate>
+                    </LocationInfo>
+                  </TouchableOpacity>
+                  <DeleteButton
+                    onPress={() => handleDeleteLocation(location.id)}
+                    accessible={true}
+                    accessibilityLabel={`Excluir ${location.city}`}
+                    accessibilityHint="Toque duas vezes para excluir esta localização"
+                  >
+                    <DeleteButtonText>Excluir</DeleteButtonText>
+                  </DeleteButton>
+                </LocationCard>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Container>
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20 // Extra padding for iOS home indicator
   },
   input: {
-    marginBottom: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: Platform.OS === 'ios' ? 12 : 8,
+    fontSize: 16,
+    minHeight: 44, // Minimum touch target size
   },
-  button: {
-    marginTop: 10,
-    width: '100%',
-  },
-  buttonStyle: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.secondary,
-    paddingVertical: 12,
-  },
-};
+  locationButton: {
+    flex: 1,
+    padding: 10,
+    minHeight: 44, // Minimum touch target size
+  }
+});
 
 const Container = styled.View`
   flex: 1;
@@ -188,21 +262,101 @@ const Title = styled.Text`
   font-weight: bold;
   color: ${theme.colors.text};
   margin-bottom: 20px;
-  text-align: center;
+`;
+
+const SearchInput = styled.View`
+  margin-bottom: 20px;
 `;
 
 const SectionTitle = styled.Text`
+  font-size: 20px;
+  font-weight: bold;
+  color: ${theme.colors.text};
+  margin-top: 20px;
+  margin-bottom: 10px;
+`;
+
+const LocationCard = styled.View`
+  flex-direction: row;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  align-items: center;
+  overflow: hidden;
+  ${Platform.select({
+  ios: `
+      shadow-color: #000;
+      shadow-offset: 0px 2px;
+      shadow-opacity: 0.25;
+      shadow-radius: 3.84px;
+    `,
+  android: `
+      elevation: 3;
+    `
+})}
+`;
+
+const LocationInfo = styled.View`
+  flex: 1;
+  padding: 15px;
+`;
+
+const CityName = styled.Text`
   font-size: 18px;
   font-weight: bold;
   color: ${theme.colors.text};
-  margin-bottom: 10px;
-  margin-top: 10px;
 `;
 
-const ErrorText = styled.Text`
-  color: ${theme.colors.error};
-  text-align: center;
-  margin-bottom: 10px;
+const StateText = styled.Text`
+  font-size: 16px;
+  color: ${theme.colors.secondary};
+  margin-top: 4px;
+`;
+
+const TemperatureText = styled.Text`
+  font-size: 16px;
+  color: ${theme.colors.primary};
+  margin-top: 4px;
+`;
+
+const LastUpdate = styled.Text`
+  font-size: 12px;
+  color: ${theme.colors.secondary};
+  margin-top: 4px;
+`;
+
+const SaveButton = styled.TouchableOpacity<ButtonProps>`
+  background-color: ${theme.colors.primary};
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin: 10px;
+  min-height: 44px;
+  min-width: 80px;
+  justify-content: center;
+  align-items: center;
+  opacity: ${(props: ButtonProps) => props.disabled ? 0.7 : 1};
+`;
+
+const SaveButtonText = styled.Text`
+  color: white;
+  font-weight: bold;
+`;
+
+const DeleteButton = styled.TouchableOpacity<ButtonProps>`
+  background-color: ${theme.colors.error};
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin: 10px;
+  min-height: 44px;
+  min-width: 80px;
+  justify-content: center;
+  align-items: center;
+  opacity: ${(props: ButtonProps) => props.disabled ? 0.7 : 1};
+`;
+
+const DeleteButtonText = styled.Text`
+  color: white;
+  font-weight: bold;
 `;
 
 export default RegisterLocationScreen;
