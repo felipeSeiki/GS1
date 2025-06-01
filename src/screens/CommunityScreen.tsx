@@ -6,7 +6,6 @@ import { ScrollView, TextStyle, ViewStyle } from 'react-native';
 import { Button, ListItem, Text } from 'react-native-elements';
 import styled from 'styled-components/native';
 import Header from '../components/Header';
-import { useAuth } from '../contexts/AuthContext';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 
@@ -53,54 +52,15 @@ const getStatusText = (status: string) => {
 };
 
 const CommunityScreen: React.FC = () => {
-  const { user, signOut } = useAuth();
   const navigation = useNavigation<CommunityScreenProps['navigation']>();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const loadAppointments = async () => {
-    try {
-      const storedAppointments = await AsyncStorage.getItem('@MedicalApp:appointments');
-      if (storedAppointments) {
-        const allAppointments: Appointment[] = JSON.parse(storedAppointments);
-        const userAppointments = allAppointments.filter(
-          (appointment) => appointment.patientId === user?.id
-        );
-        setAppointments(userAppointments);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar consultas:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Carrega as consultas quando a tela estiver em foco
-  useFocusEffect(
-    React.useCallback(() => {
-      loadAppointments();
-    }, [])
-  );
 
   return (
     <Container>
       <Header />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Title>Minhas Consultas</Title>
-
-        <Button
-          title="Agendar Nova Consulta"
-          onPress={() => navigation.navigate('CreateAppointment')}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
-
-        <Button
-          title="Meu Perfil"
-          onPress={() => navigation.navigate('Profile')}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.buttonStyle}
-        />
 
         {loading ? (
           <LoadingText>Carregando consultas...</LoadingText>
@@ -132,12 +92,6 @@ const CommunityScreen: React.FC = () => {
           ))
         )}
 
-        <Button
-          title="Sair"
-          onPress={signOut}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.logoutButton}
-        />
       </ScrollView>
     </Container>
   );

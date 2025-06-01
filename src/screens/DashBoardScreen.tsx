@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { ScrollView, TouchableOpacity, ViewStyle } from 'react-native';
+import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import styled from 'styled-components/native';
 import Header from '../components/Header';
 import WeatherMap from '../components/WeatherMap';
@@ -13,6 +13,17 @@ type DashboardScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'DashBoard'>;
 };
 
+export interface Location {
+  id: string;
+  city: string;
+  state: string;
+  temperature?: number;
+  lastUpdate?: string;
+  isFavorite?: boolean;
+}
+
+const { width, height } = Dimensions.get('window');
+
 const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<DashboardScreenProps['navigation']>();
   const [currentWeather] = useState({
@@ -22,6 +33,10 @@ const DashboardScreen: React.FC = () => {
     temperature: 20,
     condition: 'Nublado',
   });
+
+  const handleNavigateToAdvices = () => {
+    navigation.navigate('Advices');
+  };
 
   return (
     <Container>
@@ -46,8 +61,15 @@ const DashboardScreen: React.FC = () => {
 
         <SectionContainer>
           <SectionTitle>ALERTA</SectionTitle>
-          <TouchableOpacity onPress={() => navigation.navigate('AlertRecords')}>
-            <SeeMoreText>Ver recomendações ➔</SeeMoreText>
+          <TouchableOpacity
+            style={styles.touchable}
+            activeOpacity={0.7}
+          >
+            <AlertButton>
+              <SeeMoreText
+                onPress={handleNavigateToAdvices}>
+                Ver recomendações ➔</SeeMoreText>
+            </AlertButton>
           </TouchableOpacity>
         </SectionContainer>
 
@@ -64,11 +86,16 @@ const DashboardScreen: React.FC = () => {
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
   scrollContent: {
-    padding: 20,
+    padding: width * 0.05,
   },
-};
+  touchable: {
+    width: '100%',
+    minHeight: 44, // Altura mínima recomendada para elementos tocáveis
+    padding: 10,
+  }
+});
 
 const Container = styled.View`
   flex: 1;
@@ -138,10 +165,18 @@ const SectionTitle = styled.Text`
   margin-bottom: 10px;
 `;
 
+const AlertButton = styled.View`
+  padding: ${width * 0.03}px;
+  background-color: ${theme.colors.background};
+  border-radius: ${width * 0.02}px;
+  align-items: flex-end;
+`;
+
 const SeeMoreText = styled.Text`
   color: ${theme.colors.primary};
-  font-size: 14px;
+  font-size: ${width * 0.04}px;
   text-align: right;
+  padding: ${width * 0.02}px;
 `;
 
 export default DashboardScreen;

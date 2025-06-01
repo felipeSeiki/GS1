@@ -133,7 +133,6 @@ const RegisterLocationScreen: React.FC = () => {
 
   return (
     <Container>
-      <Header backTo="DashBoard" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
