@@ -14,9 +14,16 @@
 import { Location } from '../services/location';
 
 export type RootStackParamList = {
-  DashBoard: { selectedLocation?: Location } | undefined;
   RegisterLocation: undefined;
-  AlertRecords: undefined;
+  DashBoard: {
+    initialLocation?: {
+      city: string;
+      state: string;
+      temperature?: number;
+      condition?: string;
+    };
+  };
   Advices: undefined;
   Community: undefined;
+  AlertRecords: undefined;
 };

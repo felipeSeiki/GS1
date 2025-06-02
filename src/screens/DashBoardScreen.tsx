@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
@@ -9,9 +9,11 @@ import WeatherMap from '../components/WeatherMap';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 
-type DashboardScreenProps = {
+interface DashboardScreenProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'DashBoard'>;
-};
+  alertMessage?: string;
+  onAlertPress?: () => void;
+}
 
 export interface Location {
   id: string;
@@ -24,18 +26,30 @@ export interface Location {
 
 const { width, height } = Dimensions.get('window');
 
-const DashboardScreen: React.FC = () => {
-  const navigation = useNavigation<DashboardScreenProps['navigation']>();
+type DashboardScreenRouteProp = RouteProp<RootStackParamList, 'DashBoard'>;
+
+const DashboardScreen: React.FC<DashboardScreenProps> = ({
+  navigation,
+  alertMessage = "Ver recomendações ➔",
+  onAlertPress
+}) => {
+  const route = useRoute<DashboardScreenRouteProp>();
+  const initialLocationFromRoute = route.params?.initialLocation;
+
   const [currentWeather] = useState({
-    city: 'São Paulo',
-    state: 'São Paulo',
+    city: initialLocationFromRoute?.city || 'São Paulo',
+    state: initialLocationFromRoute?.state || 'São Paulo',
     time: '19h20',
-    temperature: 20,
-    condition: 'Nublado',
+    temperature: initialLocationFromRoute?.temperature || 20,
+    condition: initialLocationFromRoute?.condition || 'Nublado',
   });
 
   const handleNavigateToAdvices = () => {
-    navigation.navigate('Advices');
+    if (onAlertPress) {
+      onAlertPress();
+    } else {
+      navigation.navigate('Advices');
+    }
   };
 
   return (
@@ -62,13 +76,12 @@ const DashboardScreen: React.FC = () => {
         <SectionContainer>
           <SectionTitle>ALERTA</SectionTitle>
           <TouchableOpacity
+            onPress={handleNavigateToAdvices}
             style={styles.touchable}
             activeOpacity={0.7}
           >
             <AlertButton>
-              <SeeMoreText
-                onPress={handleNavigateToAdvices}>
-                Ver recomendações ➔</SeeMoreText>
+              <SeeMoreText>{alertMessage}</SeeMoreText>
             </AlertButton>
           </TouchableOpacity>
         </SectionContainer>

@@ -115,10 +115,16 @@ const RegisterLocationScreen: React.FC = () => {
       ]
     );
   };
-
   // Navigate to Dashboard with location data
   const handleLocationPress = (location: Location) => {
-    navigation.navigate('DashBoard', { selectedLocation: location });
+    navigation.navigate('DashBoard', {
+      initialLocation: {
+        city: location.city,
+        state: location.state,
+        temperature: location.temperature,
+        condition: location.condition || 'Nublado'
+      }
+    });
   };
 
   const handleInputFocus = useCallback(() => {

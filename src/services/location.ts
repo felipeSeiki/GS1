@@ -6,6 +6,7 @@ export interface Location {
   state: string;
   temperature?: number;
   lastUpdate?: string;
+  condition?: string;
   isFavorite?: boolean;
 }
 
