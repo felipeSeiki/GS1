@@ -20,111 +20,91 @@ type AlertRecordsScreenProps = {
 const mockAlerts: DisasterAlert[] = [
   {
     id: '1',
-    title: 'Alerta de Tempestade',
+    title: 'Alerta de Tempestade Severa',
     type: 'STORM',
     severity: 'HIGH',
     status: 'ACTIVE',
     startDate: '2025-06-02T10:00:00',
-    description: 'Tempestade severa prevista com possibilidade de alagamentos.',
+    description: 'Tempestade severa com rajadas de vento e granizo',
     location: {
       city: 'São Paulo',
       state: 'SP',
-      coordinates: {
-        latitude: -23.550520,
-        longitude: -46.633308
-      }
+      coordinates: { latitude: -23.550520, longitude: -46.633308 }
     },
-    affectedAreas: ['Zona Sul', 'Centro'],
+    affectedAreas: ['Zona Sul', 'Centro', 'Zona Oeste'],
     recommendations: [
       'Evite áreas alagadas',
-      'Fique em local seguro',
-      'Mantenha-se informado'
+      'Procure abrigo em local seguro',
+      'Mantenha distância de árvores e postes',
+      'Desligue aparelhos elétricos em caso de raios'
     ],
-    emergencyContacts: {
-      civilDefense: '199',
-      firefighters: '193'
-    }
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
   },
   {
     id: '2',
-    title: 'Alerta de Calor Intenso',
+    title: 'Alerta de Temperatura Extrema',
     type: 'TEMPERATURE',
-    severity: 'MEDIUM',
+    severity: 'HIGH',
     status: 'ACTIVE',
     startDate: '2025-06-01T08:00:00',
-    description: 'Temperatura acima de 35°C prevista.',
+    description: 'Onda de calor com temperaturas acima de 35°C',
     location: {
       city: 'Rio de Janeiro',
       state: 'RJ',
-      coordinates: {
-        latitude: -22.906847,
-        longitude: -43.172897
-      }
+      coordinates: { latitude: -22.906847, longitude: -43.172897 }
     },
     affectedAreas: ['Toda a cidade'],
     recommendations: [
       'Beba água frequentemente',
-      'Evite exposição ao sol',
-      'Use protetor solar'
+      'Evite exposição ao sol entre 10h e 16h',
+      'Use protetor solar',
+      'Mantenha ambientes ventilados'
     ],
-    emergencyContacts: {
-      civilDefense: '199',
-      firefighters: '193'
-    }
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
   },
   {
     id: '3',
-    title: 'Alerta de Alagamento',
+    title: 'Alerta de Enchente',
     type: 'FLOOD',
     severity: 'CRITICAL',
     status: 'ACTIVE',
     startDate: '2025-06-02T15:00:00',
-    description: 'Fortes chuvas causaram alagamentos em diversas regiões.',
+    description: 'Transbordamento dos principais rios da região',
     location: {
-      city: 'São Paulo',
-      state: 'SP',
-      coordinates: {
-        latitude: -23.550520,
-        longitude: -46.633308
-      }
+      city: 'Manaus',
+      state: 'AM',
+      coordinates: { latitude: -3.119028, longitude: -60.021731 }
     },
-    affectedAreas: ['Zona Leste', 'Marginal Tietê'],
+    affectedAreas: ['Zona Sul', 'Zona Leste', 'Margem do Rio Negro'],
     recommendations: [
-      'Evite transitar em áreas alagadas',
-      'Busque rotas alternativas',
-      'Aguarde orientações das autoridades'
+      'Evite áreas próximas aos rios',
+      'Prepare-se para possível evacuação',
+      'Proteja documentos importantes',
+      'Monitore o nível dos rios'
     ],
-    emergencyContacts: {
-      civilDefense: '199',
-      firefighters: '193'
-    }
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
   },
   {
     id: '4',
-    title: 'Alerta de Ventos Fortes',
+    title: 'Alerta de Ventos Intensos',
     type: 'WIND',
     severity: 'HIGH',
     status: 'ACTIVE',
     startDate: '2025-06-02T14:30:00',
-    description: 'Rajadas de vento podem ultrapassar 80 km/h.',
+    description: 'Rajadas de vento podem ultrapassar 80 km/h',
     location: {
       city: 'Curitiba',
       state: 'PR',
-      coordinates: {
-        latitude: -25.428954,
-        longitude: -49.271232
-      }
+      coordinates: { latitude: -25.428954, longitude: -49.271232 }
     },
-    affectedAreas: ['Região Metropolitana'],
+    affectedAreas: ['Centro', 'Região Metropolitana'],
     recommendations: [
       'Evite áreas com estruturas instáveis',
       'Recolha objetos soltos',
-      'Fique atento a quedas de árvores'
+      'Mantenha distância de árvores',
+      'Verifique telhados e estruturas'
     ],
-    emergencyContacts: {
-      civilDefense: '199',
-      firefighters: '193'
-    }
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
   },
   {
     id: '5',
@@ -133,25 +113,155 @@ const mockAlerts: DisasterAlert[] = [
     severity: 'HIGH',
     status: 'ACTIVE',
     startDate: '2025-06-03T09:00:00',
-    description: 'Índice de radiação UV extremamente alto.',
+    description: 'Índice de radiação UV em níveis extremos',
     location: {
       city: 'Salvador',
       state: 'BA',
-      coordinates: {
-        latitude: -12.977749,
-        longitude: -38.501630
-      }
+      coordinates: { latitude: -12.977749, longitude: -38.501630 }
     },
-    affectedAreas: ['Orla', 'Cidade Alta'],
+    affectedAreas: ['Orla', 'Centro', 'Região Metropolitana'],
     recommendations: [
       'Use protetor solar FPS 50+',
-      'Evite exposição entre 10h e 16h',
-      'Utilize roupas com proteção UV'
+      'Evite exposição direta ao sol',
+      'Use óculos de sol e chapéu',
+      'Procure locais sombreados'
     ],
-    emergencyContacts: {
-      civilDefense: '199',
-      firefighters: '193'
-    }
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
+  },
+  {
+    id: '6',
+    title: 'Alerta de Alagamento',
+    type: 'FLOOD',
+    severity: 'CRITICAL',
+    status: 'ACTIVE',
+    startDate: '2025-06-02T16:00:00',
+    description: 'Alagamentos em diversas regiões da cidade',
+    location: {
+      city: 'Recife',
+      state: 'PE',
+      coordinates: { latitude: -8.057838, longitude: -34.882897 }
+    },
+    affectedAreas: ['Zona Sul', 'Centro', 'Afogados'],
+    recommendations: [
+      'Evite transitar em áreas alagadas',
+      'Busque rotas alternativas',
+      'Não force passagem em áreas alagadas',
+      'Siga orientações da Defesa Civil'
+    ],
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
+  },
+  {
+    id: '7',
+    title: 'Alerta de Temporal',
+    type: 'STORM',
+    severity: 'HIGH',
+    status: 'ACTIVE',
+    startDate: '2025-05-15T08:00:00',
+    description: 'Previsão de temporal com possibilidade de granizo',
+    location: {
+      city: 'Porto Alegre',
+      state: 'RS',
+      coordinates: { latitude: -30.033056, longitude: -51.230000 }
+    },
+    affectedAreas: ['Centro Histórico', 'Zona Norte', 'Zona Sul'],
+    recommendations: [
+      'Busque abrigo seguro',
+      'Evite áreas abertas',
+      'Proteja veículos do granizo',
+      'Fique atento aos alertas'
+    ],
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
+  },
+  {
+    id: '8',
+    title: 'Alerta de Temporal Encerrado',
+    type: 'STORM',
+    severity: 'HIGH',
+    status: 'EXPIRED',
+    startDate: '2025-05-20T14:00:00',
+    endDate: '2025-05-21T10:00:00',
+    description: 'Temporal com rajadas de vento e chuva intensa causou diversos transtornos',
+    location: {
+      city: 'São Paulo',
+      state: 'SP',
+      coordinates: { latitude: -23.550520, longitude: -46.633308 }
+    },
+    affectedAreas: ['Zona Leste', 'Zona Norte', 'Centro'],
+    recommendations: [
+      'Aguarde a avaliação da Defesa Civil',
+      'Reporte danos estruturais',
+      'Evite áreas com risco de deslizamento',
+      'Fique atento a novos alertas'
+    ],
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
+  },
+  {
+    id: '9',
+    title: 'Alerta de Alagamento Finalizado',
+    type: 'FLOOD',
+    severity: 'CRITICAL',
+    status: 'EXPIRED',
+    startDate: '2025-05-15T08:00:00',
+    endDate: '2025-05-16T18:00:00',
+    description: 'Graves alagamentos afetaram diversas regiões da cidade',
+    location: {
+      city: 'Rio de Janeiro',
+      state: 'RJ',
+      coordinates: { latitude: -22.906847, longitude: -43.172897 }
+    },
+    affectedAreas: ['Zona Sul', 'Centro', 'Barra da Tijuca'],
+    recommendations: [
+      'Avalie possíveis danos estruturais',
+      'Documente prejuízos para seguro',
+      'Higienize áreas afetadas',
+      'Descarte materiais contaminados'
+    ],
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
+  },
+  {
+    id: '10',
+    title: 'Alerta de Temperatura Encerrado',
+    type: 'TEMPERATURE',
+    severity: 'HIGH',
+    status: 'EXPIRED',
+    startDate: '2025-05-10T09:00:00',
+    endDate: '2025-05-12T20:00:00',
+    description: 'Onda de calor registrou temperaturas recordes',
+    location: {
+      city: 'Cuiabá',
+      state: 'MT',
+      coordinates: { latitude: -15.601411, longitude: -56.097892 }
+    },
+    affectedAreas: ['Toda a cidade'],
+    recommendations: [
+      'Mantenha a hidratação',
+      'Verifique a saúde de idosos e crianças',
+      'Evite atividades físicas intensas',
+      'Monitore sintomas de insolação'
+    ],
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
+  },
+  {
+    id: '11',
+    title: 'Alerta de Ventos Cancelado',
+    type: 'WIND',
+    severity: 'HIGH',
+    status: 'CANCELED',
+    startDate: '2025-05-05T16:00:00',
+    endDate: '2025-05-05T18:00:00',
+    description: 'Alerta cancelado após reavaliação meteorológica',
+    location: {
+      city: 'Florianópolis',
+      state: 'SC',
+      coordinates: { latitude: -27.594870, longitude: -48.548219 }
+    },
+    affectedAreas: ['Região Costeira', 'Centro'],
+    recommendations: [
+      'Retorne às atividades normais',
+      'Mantenha-se informado',
+      'Fique atento a novos alertas'
+    ],
+    emergencyContacts: { civilDefense: '199', firefighters: '193' }
   }
 ];
 

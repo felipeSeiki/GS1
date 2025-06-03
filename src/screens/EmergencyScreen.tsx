@@ -1,97 +1,135 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState, useEffect } from 'react';
 import { ScrollView, Alert, Linking, View } from 'react-native';
-import { Button } from 'react-native-elements';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import styled from 'styled-components/native';
 import Header from '../components/Header';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
+import { LocationData, DisasterType } from '../types/disasters';
+import { locationService } from '../services/location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type EmergencyScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Emergency'>;
 };
 
-interface Appointment {
-  id: string;
-  patientId: string;
-  patientName: string;
-  doctorId: string;
-  doctorName: string;
-  date: string;
-  time: string;
-  specialty: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+interface EmergencyButtonProps {
+  color?: string;
 }
-
-interface StyledProps {
-  status: string;
-}
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'confirmed':
-      return theme.colors.success;
-    case 'cancelled':
-      return theme.colors.error;
-    default:
-      return theme.colors.warning;
-  }
-};
-
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'confirmed':
-      return 'Confirmada';
-    case 'cancelled':
-      return 'Cancelada';
-    default:
-      return 'Pendente';
-  }
-};
 
 const EmergencyScreen: React.FC = () => {
   const navigation = useNavigation<EmergencyScreenProps['navigation']>();
+  const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadLocationData = async () => {
+      try {
+        const savedLocation = await AsyncStorage.getItem('@saved_location');
+        if (savedLocation) {
+          const { city, state } = JSON.parse(savedLocation);
+          const data = locationService.getMockData(city, state);
+          setLocationData(data);
+        }
+      } catch (error) {
+        console.error('Error loading location data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLocationData();
+  }, []);
 
   const handleEmergencyCall = (number: string) => {
     Alert.alert(
       'Ligação de Emergência',
       `Você será redirecionado para fazer uma ligação para ${number}`,
       [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Ligar', onPress: () => Linking.openURL(`tel:${number}`) },
+      ],
+    );
+  };
+
+  const handleShareLocation = () => {
+    if (!locationData) return;
+
+    const locationText = `
+      Localização Atual:
+      Cidade: ${locationData.city}
+      Estado: ${locationData.state}
+      Condição: ${locationData.weather.condition}
+      Temperatura: ${locationData.weather.temperature}°C
+      Umidade: ${locationData.weather.humidity}%
+      Chuva: ${locationData.weather.rainProbability}%
+      ${locationData.activeDisasters.length > 0 && locationData.activeDisasters[0] !== 'Nenhum'
+        ? `\nAlertas Ativos: ${locationData.activeDisasters.join(', ')}`
+        : ''}
+    `;
+
+    Alert.alert(
+      'Compartilhar Localização',
+      'Sua localização será compartilhada com os serviços de emergência',
+      [
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Ligar',
+          text: 'Compartilhar',
           onPress: () => {
-            Linking.openURL(`tel:${number}`);
+            Alert.alert('Localização compartilhada', locationText);
           },
         },
       ],
     );
   };
 
-  const handleShareLocation = () => {
-    Alert.alert(
-      'Compartilhar Localização',
-      'Sua localização será compartilhada com os serviços de emergência',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Compartilhar',
-          onPress: () => {
-            // Aqui seria implementada a lógica de compartilhamento
-            Alert.alert('Localização compartilhada com sucesso!');
-          },
-        },
-      ],
-    );
+  // Retorna as instruções específicas para cada tipo de desastre
+  const getDisasterInstructions = (type: DisasterType): string[] => {
+    switch (type) {
+      case 'Enchente':
+        return [
+          'Desligue a energia elétrica da casa',
+          'Procure locais mais altos',
+          'Não atravesse áreas alagadas',
+          'Mantenha documentos em local seguro',
+          'Fique atento aos alertas da Defesa Civil'
+        ];
+      case 'Deslizamento':
+        return [
+          'Evacue imediatamente a área de risco',
+          'Não retorne ao local até autorização',
+          'Monitore sinais de movimentação do solo',
+          'Alerte vizinhos sobre o risco',
+          'Siga as orientações da Defesa Civil'
+        ];
+      case 'Vendaval':
+        return [
+          'Mantenha-se longe de janelas',
+          'Procure abrigo em local resistente',
+          'Evite áreas com árvores ou postes',
+          'Recolha objetos soltos',
+          'Não se exponha ao vendaval'
+        ];
+      case 'Seca':
+        return [
+          'Economize água',
+          'Evite atividades que consumam muita água',
+          'Mantenha-se hidratado',
+          'Proteja-se do sol forte',
+          'Evite atividades ao ar livre nas horas mais quentes'
+        ];
+      case 'Incêndio':
+        return [
+          'Evacue o local imediatamente',
+          'Não use elevadores',
+          'Mantenha-se abaixado para evitar fumaça',
+          'Cubra o nariz e a boca com pano úmido',
+          'Não retorne ao local'
+        ];
+      default:
+        return [];
+    }
   };
 
   return (
@@ -135,12 +173,21 @@ const EmergencyScreen: React.FC = () => {
 
         <LocationContainer>
           <LocationTitle>Sua Localização Atual</LocationTitle>
-          <LocationText>Endereço: Av. Paulista, 1000</LocationText>
-          <LocationText>São Paulo, SP</LocationText>
-          <LocationText>CEP: 01310-100</LocationText>
-          <ShareButton onPress={handleShareLocation}>
-            <ShareButtonText>Compartilhar Localização</ShareButtonText>
-          </ShareButton>
+          {locationData ? (
+            <>
+              <LocationText>{locationData.city}, {locationData.state}</LocationText>
+              <LocationText>Temperatura: {locationData.weather.temperature}°C</LocationText>
+              <LocationText>Condição: {locationData.weather.condition}</LocationText>
+              {locationData.activeDisasters[0] !== 'Nenhum' && (
+                <LocationAlert>Alertas ativos: {locationData.activeDisasters.join(', ')}</LocationAlert>
+              )}
+              <ShareButton onPress={handleShareLocation}>
+                <ShareButtonText>Compartilhar Localização</ShareButtonText>
+              </ShareButton>
+            </>
+          ) : (
+            <LocationText>Carregando localização...</LocationText>
+          )}
         </LocationContainer>
 
         <EmergencyCard>
@@ -171,57 +218,21 @@ const EmergencyScreen: React.FC = () => {
           </KitItem>
         </EmergencyCard>
 
-        <EmergencyCard>
-          <EmergencyTitle>Instruções por Tipo de Emergência</EmergencyTitle>
-
-          <EmergencyTypeContainer>
-            <EmergencyTypeTitle>Enchente</EmergencyTypeTitle>
-            <InstructionItem>
-              <InstructionText>• Desligue energia elétrica da casa</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Vá para local mais alto</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Não tente atravessar água corrente</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Tenha kit de emergência preparado</InstructionText>
-            </InstructionItem>
-          </EmergencyTypeContainer>
-
-          <EmergencyTypeContainer>
-            <EmergencyTypeTitle>Vendaval</EmergencyTypeTitle>
-            <InstructionItem>
-              <InstructionText>• Fique longe de janelas e portas</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Procure abrigo em local resistente</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Evite áreas com árvores</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Não saia durante a tempestade</InstructionText>
-            </InstructionItem>
-          </EmergencyTypeContainer>
-
-          <EmergencyTypeContainer>
-            <EmergencyTypeTitle>Deslizamento</EmergencyTypeTitle>
-            <InstructionItem>
-              <InstructionText>• Saia imediatamente da área de risco</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Não retorne ao local</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Procure abrigo seguro</InstructionText>
-            </InstructionItem>
-            <InstructionItem>
-              <InstructionText>• Contate autoridades</InstructionText>
-            </InstructionItem>
-          </EmergencyTypeContainer>
-        </EmergencyCard>
+        {locationData && locationData.activeDisasters[0] !== 'Nenhum' && (
+          <EmergencyCard>
+            <EmergencyTitle>Instruções para Emergências Atuais</EmergencyTitle>
+            {locationData.activeDisasters.map((disaster, index) => (
+              <EmergencyTypeContainer key={index}>
+                <EmergencyTypeTitle>{disaster}</EmergencyTypeTitle>
+                {getDisasterInstructions(disaster).map((instruction, idx) => (
+                  <InstructionItem key={idx}>
+                    <InstructionText>• {instruction}</InstructionText>
+                  </InstructionItem>
+                ))}
+              </EmergencyTypeContainer>
+            ))}
+          </EmergencyCard>
+        )}
       </ScrollView>
     </Container>
   );
@@ -230,69 +241,12 @@ const EmergencyScreen: React.FC = () => {
 const styles = {
   scrollContent: {
     padding: 20,
-  },
-  emergencyButton: {
-    backgroundColor: theme.colors.error,
-    paddingVertical: 15,
-    marginTop: 10,
-  },
-  emergencyButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  contactButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-    marginVertical: 5,
-  },
-  contactButtonText: {
-    fontSize: 16,
-  },
-  button: {
-    marginBottom: 20,
-    width: '100%',
-  },
-  buttonStyle: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-  },
-  logoutButton: {
-    backgroundColor: theme.colors.error,
-    paddingVertical: 12,
-  },
-  patientName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-  doctorName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-  specialty: {
-    fontSize: 14,
-    color: theme.colors.text,
-    marginTop: 4,
-  },
-  dateTime: {
-    fontSize: 14,
-    color: theme.colors.text,
-    marginTop: 4,
-  },
+  }
 };
 
 const Container = styled.View`
   flex: 1;
   background-color: ${theme.colors.background};
-`;
-
-const Title = styled.Text`
-  font-size: 24px;
-  font-weight: bold;
-  color: ${theme.colors.text};
-  margin-bottom: 20px;
-  text-align: center;
 `;
 
 const EmergencyCard = styled.View`
@@ -311,41 +265,6 @@ const EmergencyTitle = styled.Text`
   margin-bottom: 10px;
 `;
 
-const EmergencyText = styled.Text`
-  font-size: 14px;
-  color: ${theme.colors.text};
-  margin-bottom: 10px;
-  line-height: 20px;
-`;
-
-const LoadingText = styled.Text`
-  text-align: center;
-  color: ${theme.colors.text};
-  font-size: 16px;
-  margin-top: 20px;
-`;
-
-const EmptyText = styled.Text`
-  text-align: center;
-  color: ${theme.colors.text};
-  font-size: 16px;
-  margin-top: 20px;
-`;
-
-const StatusBadge = styled.View<StyledProps>`
-  background-color: ${(props: StyledProps) => getStatusColor(props.status) + '20'};
-  padding: 4px 8px;
-  border-radius: 4px;
-  align-self: flex-start;
-  margin-top: 8px;
-`;
-
-const StatusText = styled.Text<StyledProps>`
-  color: ${(props: StyledProps) => getStatusColor(props.status)};
-  font-size: 12px;
-  font-weight: 500;
-`;
-
 const WarningBanner = styled.View`
   background-color: ${theme.colors.error};
   padding: 15px;
@@ -362,10 +281,6 @@ const EmergencyGrid = styled.View`
   flex-wrap: wrap;
   justify-content: space-between;
 `;
-
-interface EmergencyButtonProps {
-  color?: string;
-}
 
 const EmergencyButton = styled.TouchableOpacity<EmergencyButtonProps>`
   background-color: ${(props: EmergencyButtonProps) => props.color || theme.colors.primary};
@@ -408,6 +323,14 @@ const LocationText = styled.Text`
   font-size: 14px;
   color: ${theme.colors.text};
   margin-bottom: 5px;
+`;
+
+const LocationAlert = styled.Text`
+  color: ${theme.colors.error};
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 8px;
+  margin-bottom: 8px;
 `;
 
 const ShareButton = styled.TouchableOpacity`

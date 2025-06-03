@@ -1,4 +1,13 @@
-export type AlertType = 'RAIN' | 'WIND' | 'TEMPERATURE' | 'UV' | 'FLOOD' | 'STORM';
+export type AlertType = 
+  'STORM' | 
+  'FLOOD' | 
+  'TEMPERATURE' | 
+  'WIND' | 
+  'UV' |
+  'FIRE' |
+  'COASTAL' |
+  'LANDSLIDE' |
+  'DROUGHT';
 export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AlertStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELED';
 
@@ -44,18 +53,24 @@ export const getSeverityColor = (severity: AlertSeverity): string => {
 
 export const getAlertTypeLabel = (type: AlertType): string => {
   switch (type) {
-    case 'RAIN':
-      return 'Chuva';
-    case 'WIND':
-      return 'Vento';
-    case 'TEMPERATURE':
-      return 'Temperatura';
-    case 'UV':
-      return 'Radiação UV';
-    case 'FLOOD':
-      return 'Alagamento';
     case 'STORM':
       return 'Tempestade';
+    case 'FLOOD':
+      return 'Alagamento';
+    case 'TEMPERATURE':
+      return 'Temperatura';
+    case 'WIND':
+      return 'Vento';
+    case 'UV':
+      return 'Radiação UV';
+    case 'FIRE':
+      return 'Incêndio';
+    case 'COASTAL':
+      return 'Ressaca';
+    case 'LANDSLIDE':
+      return 'Deslizamento';
+    case 'DROUGHT':
+      return 'Seca';
     default:
       return 'Outro';
   }

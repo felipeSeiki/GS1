@@ -40,6 +40,7 @@ const RegisterLocationScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savedLocations, setSavedLocations] = useState<Location[]>([]);
   const [searchResults, setSearchResults] = useState<Location[]>([]);
+  const [suggestedCities, setSuggestedCities] = useState<Location[]>([]);
 
   const loadSavedLocations = useCallback(async () => {
     try {
@@ -53,6 +54,65 @@ const RegisterLocationScreen: React.FC = () => {
   useEffect(() => {
     loadSavedLocations();
   }, [loadSavedLocations]);
+
+  useEffect(() => {
+    const loadSuggestedCities = async () => {
+      const allCities = await locationService.searchCities('');
+
+      // Filter out already saved locations
+      const notSavedCities = allCities.filter(city =>
+        !savedLocations.some(saved =>
+          saved.city === city.city && saved.state === city.state
+        )
+      );
+
+      // Filter cities with mock data and active situations
+      const citiesWithData = notSavedCities.filter(city => {
+        const mockData = locationService.getMockData(city.city, city.state);
+        return mockData && (
+          mockData.activeDisasters.length > 0 ||
+          mockData.risks.currentRisks.some(risk => risk.level !== 'Baixo')
+        );
+      });
+
+      // Sort by whether they have active disasters and then alphabetically
+      const sortedCities = citiesWithData.sort((a, b) => {
+        const dataA = locationService.getMockData(a.city, a.state);
+        const dataB = locationService.getMockData(b.city, b.state);
+
+        // First sort by active disasters
+        const hasDisasterA = dataA.activeDisasters.some(d => d !== 'Nenhum');
+        const hasDisasterB = dataB.activeDisasters.some(d => d !== 'Nenhum');
+
+        if (hasDisasterA && !hasDisasterB) return -1;
+        if (!hasDisasterA && hasDisasterB) return 1;
+
+        // Then sort by risk level
+        const maxRiskA = Math.max(...dataA.risks.currentRisks.map(r =>
+          r.level === 'Crítico' ? 4 :
+            r.level === 'Alto' ? 3 :
+              r.level === 'Médio' ? 2 :
+                r.level === 'Baixo' ? 1 : 0
+        ));
+        const maxRiskB = Math.max(...dataB.risks.currentRisks.map(r =>
+          r.level === 'Crítico' ? 4 :
+            r.level === 'Alto' ? 3 :
+              r.level === 'Médio' ? 2 :
+                r.level === 'Baixo' ? 1 : 0
+        ));
+
+        if (maxRiskA !== maxRiskB) return maxRiskB - maxRiskA;
+
+        // Finally sort alphabetically
+        return a.city.localeCompare(b.city);
+      });
+
+      setSuggestedCities(sortedCities.slice(0, 3));
+    };
+
+    loadSuggestedCities();
+  }, [savedLocations]); // Added savedLocations as dependency
+
   const searchCities = useCallback(async (term: string) => {
     if (term.length < 2) {
       setSearchResults([]);
@@ -63,20 +123,39 @@ const RegisterLocationScreen: React.FC = () => {
     try {
       const results = await locationService.searchCities(term);
 
-      if (results.length === 0) {
+      // Filter out already saved locations
+      const filteredResults = results.filter(city =>
+        !savedLocations.some(saved =>
+          saved.city === city.city && saved.state === city.state
+        )
+      );
+
+      if (filteredResults.length === 0 && results.length > 0) {
+        // Se temos resultados mas todos já estão salvos
+        Alert.alert('Aviso', 'Todas as cidades encontradas já estão salvas.');
+        setSearchResults([]);
+      } else if (filteredResults.length === 0) {
+        // Se não temos resultados, tentar com normalização
         const normalizedResults = await locationService.searchCities(
           normalizeString(term)
         );
-        setSearchResults(normalizedResults);
+
+        const filteredNormalizedResults = normalizedResults.filter(city =>
+          !savedLocations.some(saved =>
+            saved.city === city.city && saved.state === city.state
+          )
+        );
+
+        setSearchResults(filteredNormalizedResults);
       } else {
-        setSearchResults(results);
+        setSearchResults(filteredResults);
       }
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível buscar as cidades');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [savedLocations]); // Added savedLocations as dependency
 
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {
@@ -125,6 +204,7 @@ const RegisterLocationScreen: React.FC = () => {
       ]
     );
   };
+
   const handleLocationPress = async (location: Location) => {
     try {
       const mockData = locationService.getMockData(location.city, location.state);
@@ -188,7 +268,35 @@ const RegisterLocationScreen: React.FC = () => {
 
           {loading && <ActivityIndicator size="large" color={theme.colors.primary} />}
 
-          {searchResults.length > 0 && (
+          {!searchTerm && suggestedCities.length > 0 && (
+            <View>
+              <SectionTitle>Cidades Sugeridas</SectionTitle>
+              {suggestedCities.map((city) => (
+                <TouchableOpacity
+                  key={city.id}
+                  onPress={() => handleLocationPress(city)}
+                  accessible={true}
+                  accessibilityLabel={`${city.city}, ${city.state}`}
+                  accessibilityHint="Toque duas vezes para ver detalhes do clima"
+                >
+                  <LocationCard>
+                    <LocationInfo>
+                      <CityName>{city.city}</CityName>
+                      <StateText>{city.state}</StateText>
+                      {city.temperature && (
+                        <TemperatureText>{city.temperature}°C</TemperatureText>
+                      )}
+                    </LocationInfo>
+                    <SaveButton onPress={() => handleSaveLocation(city)}>
+                      <SaveButtonText>Salvar</SaveButtonText>
+                    </SaveButton>
+                  </LocationCard>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {searchTerm && searchResults.length > 0 && (
             <View>
               <SectionTitle>Resultados da Busca</SectionTitle>
               {searchResults.map((result) => (
