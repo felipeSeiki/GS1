@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styled from 'styled-components/native';
@@ -38,13 +38,64 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const initialLocationFromRoute = route.params?.initialLocation;
   const [loading, setLoading] = useState(false);
 
-  const [currentWeather] = useState({
-    city: initialLocationFromRoute?.city || 'São Paulo',
-    state: initialLocationFromRoute?.state || 'São Paulo',
+  const [currentWeather, setCurrentWeather] = useState({
+    city: 'São Paulo',
+    state: 'SP',
     time: '19h20',
-    temperature: initialLocationFromRoute?.temperature || 20,
-    condition: initialLocationFromRoute?.condition || 'Nublado',
+    temperature: 20,
+    condition: 'Nublado',
   });
+
+  useEffect(() => {
+    const loadSavedLocation = async () => {
+      try {
+        const savedLocation = await AsyncStorage.getItem('@saved_location');
+        if (savedLocation) {
+          const locationData = JSON.parse(savedLocation);
+          setCurrentWeather(prev => ({
+            ...prev,
+            city: locationData.city,
+            state: locationData.state,
+            temperature: locationData.temperature || prev.temperature,
+            condition: locationData.condition || prev.condition
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading saved location:', error);
+      }
+    };
+
+    loadSavedLocation();
+  }, []);
+
+  useEffect(() => {
+    if (route.params?.initialLocation) {
+      const { city, state, temperature, condition } = route.params.initialLocation;
+
+      const saveLocation = async () => {
+        try {
+          await AsyncStorage.setItem('@saved_location', JSON.stringify({
+            city,
+            state,
+            temperature,
+            condition
+          }));
+
+          setCurrentWeather(prev => ({
+            ...prev,
+            city,
+            state,
+            temperature: temperature || prev.temperature,
+            condition: condition || prev.condition
+          }));
+        } catch (error) {
+          console.error('Error saving location:', error);
+        }
+      };
+
+      saveLocation();
+    }
+  }, [route.params?.initialLocation]);
 
   const handleNavigateToAdvices = () => {
     if (onAlertPress) {
@@ -59,6 +110,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       cityFilter: currentWeather.city,
       stateFilter: currentWeather.state
     });
+  };
+
+  const handleNavigateToEmergency = () => {
+    navigation.navigate('Emergency');
   };
 
   return (
@@ -92,15 +147,27 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
         <SectionContainer>
           <SectionTitle>ALERTA</SectionTitle>
-          <TouchableOpacity
-            onPress={handleNavigateToAdvices}
-            style={styles.touchable}
-            activeOpacity={0.7}
-          >
-            <AlertButton>
-              <SeeMoreText>{alertMessage}</SeeMoreText>
-            </AlertButton>
-          </TouchableOpacity>
+          <ButtonsContainer>
+            <AlertButtonWrapper onPress={handleNavigateToAdvices} activeOpacity={0.7}>
+              <AlertButton>
+                <ButtonContent>
+                  <Ionicons name="alert-circle-outline" size={24} color={theme.colors.primary} />
+                  <ButtonText>Ver recomendações</ButtonText>
+                  <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
+                </ButtonContent>
+              </AlertButton>
+            </AlertButtonWrapper>
+
+            <AlertButtonWrapper onPress={handleNavigateToEmergency} activeOpacity={0.7}>
+              <EmergencyButton>
+                <ButtonContent>
+                  <Ionicons name="warning-outline" size={24} color="#fff" />
+                  <EmergencyButtonText>Emergência</EmergencyButtonText>
+                  <Ionicons name="chevron-forward" size={24} color="#fff" />
+                </ButtonContent>
+              </EmergencyButton>
+            </AlertButtonWrapper>
+          </ButtonsContainer>
         </SectionContainer>
 
         <SectionContainer>
@@ -196,18 +263,44 @@ const SectionTitle = styled.Text`
   margin-bottom: 10px;
 `;
 
-const AlertButton = styled.View`
-  padding: ${width * 0.03}px;
-  background-color: ${theme.colors.background};
-  border-radius: ${width * 0.02}px;
-  align-items: flex-end;
+const ButtonsContainer = styled.View`
+  gap: 10px;
 `;
 
-const SeeMoreText = styled.Text`
+const AlertButtonWrapper = styled.TouchableOpacity`
+  width: 100%;
+`;
+
+const ButtonContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+`;
+
+const ButtonText = styled.Text`
   color: ${theme.colors.primary};
-  font-size: ${width * 0.04}px;
-  text-align: right;
-  padding: ${width * 0.02}px;
+  font-size: 16px;
+  flex: 1;
+  margin-left: 10px;
+`;
+
+const EmergencyButtonText = styled.Text`
+  color: #fff;
+  font-size: 16px;
+  flex: 1;
+  margin-left: 10px;
+`;
+
+const EmergencyButton = styled.View`
+  background-color: ${theme.colors.error};
+  border-radius: ${width * 0.02}px;
+`;
+
+const AlertButton = styled.View`
+  background-color: ${theme.colors.background};
+  border-radius: ${width * 0.02}px;
+  border: 1px solid ${theme.colors.primary};
 `;
 
 export default DashboardScreen;

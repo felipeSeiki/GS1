@@ -8,7 +8,7 @@ import DashboardScreen from '../screens/DashBoardScreen';
 import RegisterLocationScreen from '../screens/RegisterLocationScreen';
 import AlertRecordsScreen from '../screens/AlertRecordsScreen';
 import AdvicesScreen from '../screens/AdvicesScreen';
-import CommunityScreen from '../screens/CommunityScreen';
+import EmergencyScreen from '../screens/EmergencyScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -34,9 +34,9 @@ export default function Routes() {
           options={{ title: 'Página de Conselhos' }}
         />
         <Stack.Screen
-          name="Community"
-          component={CommunityScreen}
-          options={{ title: 'Feed da comunidade' }}
+          name="Emergency"
+          component={EmergencyScreen}
+          options={{ title: 'Página de Emergências' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

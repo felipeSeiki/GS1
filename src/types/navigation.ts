@@ -24,7 +24,7 @@ export type RootStackParamList = {
     };
   };
   Advices: undefined;
-  Community: undefined;
+  Emergency: undefined;
   AlertRecords: {
     cityFilter?: string;
     stateFilter?: string;
