@@ -27,6 +27,12 @@ type RegisterLocationScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'RegisterLocation'>;
 };
 
+const normalizeString = (str: string) => {
+  return str.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+};
+
 const RegisterLocationScreen: React.FC = () => {
   const navigation = useNavigation<RegisterLocationScreenProps['navigation']>();
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,7 +53,6 @@ const RegisterLocationScreen: React.FC = () => {
   useEffect(() => {
     loadSavedLocations();
   }, [loadSavedLocations]);
-
   // Search cities with debounce
   const searchCities = useCallback(async (term: string) => {
     if (term.length < 2) {
@@ -57,8 +62,18 @@ const RegisterLocationScreen: React.FC = () => {
 
     setLoading(true);
     try {
+      // Primeiro, tenta buscar com o termo original
       const results = await locationService.searchCities(term);
-      setSearchResults(results);
+
+      if (results.length === 0) {
+        // Se não encontrar resultados, tenta buscar com o termo normalizado
+        const normalizedResults = await locationService.searchCities(
+          normalizeString(term)
+        );
+        setSearchResults(normalizedResults);
+      } else {
+        setSearchResults(results);
+      }
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível buscar as cidades');
     } finally {
@@ -161,6 +176,8 @@ const RegisterLocationScreen: React.FC = () => {
               returnKeyType="search"
               autoCapitalize="words"
               autoCorrect={false}
+              keyboardType="default"
+              textContentType="addressCity"
               accessible={true}
               accessibilityLabel="Campo de busca de cidade"
               accessibilityHint="Digite o nome da cidade para buscar"

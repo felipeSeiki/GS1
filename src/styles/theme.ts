@@ -41,16 +41,19 @@ export type ThemeType = Theme;
 
 export default {
    colors: {
-      primary: '#4A90E2',
-      secondary: '#6C757D',
+      primary: '#3B82F6',
+      secondary: '#6366F1',
       background: '#F8F9FA',
-      text: '#212529',
-      error: '#DC3545',
-      success: '#28A745',
-      warning: '#FFC107',
+      text: '#1F2937',
+      error: '#EF4444',
+      success: '#10B981',
+      warning: '#F59E0B',
       white: '#FFFFFF',
-      border: '#DEE2E6',
+      border: '#E5E7EB',
       card: '#FFFFFF',
+      surfaceLight: '#F9FAFB',
+      surfaceDark: '#1F2937',
+      accent: '#8B5CF6',
    },
    typography: {
       title: {

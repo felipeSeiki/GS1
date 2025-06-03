@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { mockLocations } from '../data/mockData';
 
 export interface Location {
   id: string;
@@ -13,13 +14,21 @@ export interface Location {
 const STORAGE_KEY = '@WeatherApp:locations';
 
 // Mock data for cities
-const mockCities: Location[] = [
-  { id: '1', city: 'São Paulo', state: 'SP', temperature: 22 },
-  { id: '2', city: 'Rio de Janeiro', state: 'RJ', temperature: 28 },
-  { id: '3', city: 'Curitiba', state: 'PR', temperature: 18 },
-  { id: '4', city: 'Salvador', state: 'BA', temperature: 30 },
-  { id: '5', city: 'Belo Horizonte', state: 'MG', temperature: 25 },
-];
+// Função para normalizar strings (remover acentos e converter para minúsculas)
+const normalizeString = (str: string) => {
+  return str.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+};
+
+// Convert mock data to Location array
+const mockCities: Location[] = Object.values(mockLocations).map((data, index) => ({
+  id: String(index + 1),
+  city: data.city,
+  state: data.state,
+  temperature: data.weather.temperature,
+  condition: data.weather.condition
+}));
 
 export const locationService = {
   async getLocations(): Promise<Location[]> {
@@ -31,11 +40,14 @@ export const locationService = {
       return [];
     }
   },
-
   async searchCities(searchTerm: string): Promise<Location[]> {
-    // Filtrar cidades mockadas pelo termo de busca
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const normalizedSearchTerm = normalizeString(searchTerm);
     return mockCities.filter(city => 
-      city.city.toLowerCase().includes(searchTerm.toLowerCase())
+      normalizeString(city.city).includes(normalizedSearchTerm) ||
+      normalizeString(city.state).includes(normalizedSearchTerm)
     );
   },
 
