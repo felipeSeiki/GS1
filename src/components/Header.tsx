@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ backTo }) => {
 
   const handleBack = () => {
     if (backTo) {
-      navigation.navigate(backTo);
+      navigation.navigate(backTo as any);
     } else {
       navigation.goBack();
     }

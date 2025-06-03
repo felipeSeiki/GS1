@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
+import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import styled from 'styled-components/native';
 import Header from '../components/Header';
 import WeatherMap from '../components/WeatherMap';
@@ -35,6 +36,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 }) => {
   const route = useRoute<DashboardScreenRouteProp>();
   const initialLocationFromRoute = route.params?.initialLocation;
+  const [loading, setLoading] = useState(false);
 
   const [currentWeather] = useState({
     city: initialLocationFromRoute?.city || 'São Paulo',
@@ -52,6 +54,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }
   };
 
+  const handleNavigateToHistory = () => {
+    navigation.navigate('AlertRecords', {
+      cityFilter: currentWeather.city,
+      stateFilter: currentWeather.state
+    });
+  };
+
   return (
     <Container>
       <Header backTo="RegisterLocation" />
@@ -64,7 +73,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <CityName>{currentWeather.city}</CityName>
             <StateName>{currentWeather.state}</StateName>
           </CityContainer>
-          <TimeText>{currentWeather.time}</TimeText>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={handleNavigateToHistory}
+              style={styles.historyButton}
+            >
+              <Ionicons name="time-outline" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+            <TimeText>{currentWeather.time}</TimeText>
+          </View>
         </LocationHeader>
 
         <WeatherContainer>
@@ -87,12 +104,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </SectionContainer>
 
         <SectionContainer>
-          <SectionTitle>MAPA</SectionTitle>
-          <WeatherMap
-            temperature={currentWeather.temperature}
-            city={currentWeather.city}
-            state={currentWeather.state}
-          />
+          <SectionTitle></SectionTitle>
         </SectionContainer>
       </ScrollView>
     </Container>
@@ -107,6 +119,12 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 44, // Altura mínima recomendada para elementos tocáveis
     padding: 10,
+  },
+  historyButton: {
+    marginRight: 10,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5'
   }
 });
 

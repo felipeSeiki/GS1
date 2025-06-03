@@ -1,3 +1,44 @@
+export interface Theme {
+   colors: {
+      card: any;
+      primary: string;
+      secondary: string;
+      background: string;
+      text: string;
+      error: string;
+      success: string;
+      warning: string;
+      white: string;
+      border: string;
+   };
+   typography: {
+      title: {
+         fontSize: number;
+         fontWeight: string;
+      };
+      subtitle: {
+         fontSize: number;
+         fontWeight: string;
+      };
+      body: {
+         fontSize: number;
+         fontWeight: string;
+      };
+      caption: {
+         fontSize: number;
+         fontWeight: string;
+      };
+   };
+   spacing: {
+      small: number;
+      medium: number;
+      large: number;
+      xlarge: number;
+   };
+}
+
+export type ThemeType = Theme;
+
 export default {
    colors: {
       primary: '#4A90E2',
@@ -9,6 +50,7 @@ export default {
       warning: '#FFC107',
       white: '#FFFFFF',
       border: '#DEE2E6',
+      card: '#FFFFFF',
    },
    typography: {
       title: {
