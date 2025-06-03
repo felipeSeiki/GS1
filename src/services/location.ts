@@ -13,21 +13,19 @@ export interface Location {
 
 const STORAGE_KEY = '@WeatherApp:locations';
 
-// Mock data for cities
-// Função para normalizar strings (remover acentos e converter para minúsculas)
 const normalizeString = (str: string) => {
   return str.normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 };
 
-// Convert mock data to Location array
-const mockCities: Location[] = Object.values(mockLocations).map((data, index) => ({
-  id: String(index + 1),
+const mockCities: Location[] = Object.entries(mockLocations).map(([key, data]) => ({
+  id: key,
   city: data.city,
   state: data.state,
   temperature: data.weather.temperature,
-  condition: data.weather.condition
+  condition: data.weather.condition,
+  lastUpdate: new Date().toISOString()
 }));
 
 export const locationService = {
@@ -40,23 +38,45 @@ export const locationService = {
       return [];
     }
   },
+
   async searchCities(searchTerm: string): Promise<Location[]> {
-    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const normalizedSearchTerm = normalizeString(searchTerm);
-    return mockCities.filter(city => 
-      normalizeString(city.city).includes(normalizedSearchTerm) ||
-      normalizeString(city.state).includes(normalizedSearchTerm)
-    );
+    const normalizedTerm = normalizeString(searchTerm);
+    return mockCities.filter(city => {
+      const normalizedCity = normalizeString(city.city);
+      const normalizedState = normalizeString(city.state);
+      
+      return normalizedCity.includes(normalizedTerm) || 
+             normalizedState.includes(normalizedTerm);
+    });
+  },
+
+  hasMockData(city: string, state: string): boolean {
+    const key = `${city}-${state}`;
+    return key in mockLocations;
+  },
+
+  getMockData(city: string, state: string) {
+    const key = `${city}-${state}`;
+    return mockLocations[key];
   },
 
   async saveLocation(location: Omit<Location, 'id'>): Promise<Location> {
     try {
       const locations = await this.getLocations();
+      
+      const existingLocation = locations.find(
+        loc => loc.city === location.city && loc.state === location.state
+      );
+      
+      if (existingLocation) {
+        return existingLocation;
+      }
+
       const newLocation: Location = {
         ...location,
-        id: Date.now().toString(),
+        id: `${location.city}-${location.state}`,
         lastUpdate: new Date().toISOString(),
       };
 

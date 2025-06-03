@@ -17,6 +17,7 @@ import Header from '../components/Header';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 import { locationService, Location } from '../services/location';
+import { mockLocations } from '../data/mockData';
 import { TextInput } from 'react-native';
 
 interface ButtonProps {
@@ -40,7 +41,6 @@ const RegisterLocationScreen: React.FC = () => {
   const [savedLocations, setSavedLocations] = useState<Location[]>([]);
   const [searchResults, setSearchResults] = useState<Location[]>([]);
 
-  // Load saved locations
   const loadSavedLocations = useCallback(async () => {
     try {
       const locations = await locationService.getLocations();
@@ -53,7 +53,6 @@ const RegisterLocationScreen: React.FC = () => {
   useEffect(() => {
     loadSavedLocations();
   }, [loadSavedLocations]);
-  // Search cities with debounce
   const searchCities = useCallback(async (term: string) => {
     if (term.length < 2) {
       setSearchResults([]);
@@ -62,11 +61,9 @@ const RegisterLocationScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      // Primeiro, tenta buscar com o termo original
       const results = await locationService.searchCities(term);
 
       if (results.length === 0) {
-        // Se não encontrar resultados, tenta buscar com o termo normalizado
         const normalizedResults = await locationService.searchCities(
           normalizeString(term)
         );
@@ -89,7 +86,6 @@ const RegisterLocationScreen: React.FC = () => {
     return () => clearTimeout(debounceTimeout);
   }, [searchTerm, searchCities]);
 
-  // Save location
   const handleSaveLocation = async (location: Location) => {
     setLoading(true);
     try {
@@ -105,7 +101,6 @@ const RegisterLocationScreen: React.FC = () => {
     }
   };
 
-  // Delete location
   const handleDeleteLocation = async (locationId: string) => {
     Alert.alert(
       'Deletar Localização',
@@ -130,25 +125,32 @@ const RegisterLocationScreen: React.FC = () => {
       ]
     );
   };
-  // Navigate to Dashboard with location data
-  const handleLocationPress = (location: Location) => {
-    navigation.navigate('DashBoard', {
-      initialLocation: {
-        city: location.city,
-        state: location.state,
-        temperature: location.temperature,
-        condition: location.condition || 'Nublado'
-      }
-    });
+  const handleLocationPress = async (location: Location) => {
+    try {
+      const mockData = locationService.getMockData(location.city, location.state);
+
+      setSearchTerm('');
+      setSearchResults([]);
+
+      navigation.navigate('DashBoard', {
+        initialLocation: {
+          city: location.city,
+          state: location.state,
+          temperature: mockData.weather.temperature,
+          condition: mockData.weather.condition
+        }
+      });
+    } catch (error) {
+      console.error('Error handling location press:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os dados da cidade');
+    }
   };
 
   const handleInputFocus = useCallback(() => {
-    // Clear results when focusing the input
     setSearchResults([]);
   }, []);
 
   const handleInputBlur = useCallback(() => {
-    // Hide keyboard when blurring the input
     Keyboard.dismiss();
   }, []);
 
@@ -258,19 +260,19 @@ const RegisterLocationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20 // Extra padding for iOS home indicator
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20
   },
   input: {
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: Platform.OS === 'ios' ? 12 : 8,
     fontSize: 16,
-    minHeight: 44, // Minimum touch target size
+    minHeight: 44,
   },
   locationButton: {
     flex: 1,
     padding: 10,
-    minHeight: 44, // Minimum touch target size
+    minHeight: 44,
   }
 });
 

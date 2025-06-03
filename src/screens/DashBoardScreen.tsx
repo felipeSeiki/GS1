@@ -1,14 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
-import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ScrollView, TouchableOpacity, StyleSheet, Dimensions, Platform, View, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styled from 'styled-components/native';
 import Header from '../components/Header';
 import theme from '../styles/theme';
 import { RootStackParamList } from '../types/navigation';
 import { mockLocations } from '../data/mockData';
+import type { DisasterType, RiskLevel } from '../types/disasters';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,84 +21,86 @@ type DashboardScreenProps = {
 
 type DashboardScreenRouteProp = RouteProp<RootStackParamList, 'DashBoard'>;
 
+const getRiskColor = (level: string) => {
+  switch (level.toLowerCase()) {
+    case 'baixo':
+      return theme.colors.success;
+    case 'médio':
+      return theme.colors.warning;
+    case 'alto':
+      return theme.colors.error;
+    case 'crítico':
+      return '#DC2626';
+    default:
+      return theme.colors.primary;
+  }
+};
+
 const DashboardScreen: React.FC<DashboardScreenProps> = ({
-  navigation,
   alertMessage = "Ver recomendações ➔",
   onAlertPress
 }) => {
+  const navigation = useNavigation<DashboardScreenProps['navigation']>();
   const route = useRoute<DashboardScreenRouteProp>();
   const [loading, setLoading] = useState(false);
-  const [locationData, setLocationData] = useState(mockLocations['São Paulo-SP']);
+  const [locationData, setLocationData] = useState<typeof mockLocations['São Paulo-SP']>(mockLocations['São Paulo-SP']);
 
-  const [currentWeather, setCurrentWeather] = useState({
-    city: locationData.city,
-    state: locationData.state,
-    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    temperature: locationData.weather.temperature,
-    condition: locationData.weather.condition,
-  });
+  const loadLocationData = useCallback(async (city: string, state: string) => {
+    try {
+      const key = `${city}-${state}`;
+      const mockData = mockLocations[key];
 
-  const [riskMetrics] = useState({
-    floodRisk: 'Alto',
-    rainLevel: '120mm',
-    soilSaturation: '85%',
-    lastUpdate: '2 horas atrás'
-  });
-
-  useEffect(() => {
-    const loadSavedLocation = async () => {
-      try {
-        const savedLocation = await AsyncStorage.getItem('@saved_location');
-        if (savedLocation) {
-          const locationData = JSON.parse(savedLocation);
-          const key = `${locationData.city}-${locationData.state}`;
-          const mockData = mockLocations[key] || mockLocations['São Paulo-SP'];
-
-          setLocationData(mockData);
-          setCurrentWeather({
-            city: mockData.city,
-            state: mockData.state,
-            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            temperature: mockData.weather.temperature,
-            condition: mockData.weather.condition,
-          });
-        }
-      } catch (error) {
-        console.error('Error loading saved location:', error);
+      if (!mockData) {
+        Alert.alert(
+          'Dados indisponíveis',
+          'Não foi possível carregar os dados desta cidade. Usando dados padrão de São Paulo.',
+        );
+        return mockLocations['São Paulo-SP'];
       }
-    };
 
-    loadSavedLocation();
+      return mockData;
+    } catch (error) {
+      console.error('Error loading location data:', error);
+      return mockLocations['São Paulo-SP'];
+    }
   }, []);
 
-  useEffect(() => {
-    if (route.params?.initialLocation) {
-      const { city, state, temperature, condition } = route.params.initialLocation;
+  const updateLocationStates = useCallback((data: typeof mockLocations['São Paulo-SP']) => {
+    setLocationData(data);
+  }, []);
 
-      const saveLocation = async () => {
+  // Atualizar dados quando a tela receber foco
+  useFocusEffect(
+    useCallback(() => {
+      const loadCurrentLocation = async () => {
         try {
-          await AsyncStorage.setItem('@saved_location', JSON.stringify({
-            city,
-            state,
-            temperature,
-            condition
-          }));
+          if (route.params?.initialLocation) {
+            const { city, state } = route.params.initialLocation;
+            const data = await loadLocationData(city, state);
+            updateLocationStates(data);
 
-          setCurrentWeather(prev => ({
-            ...prev,
-            city,
-            state,
-            temperature: temperature || prev.temperature,
-            condition: condition || prev.condition
-          }));
+            await AsyncStorage.setItem('@saved_location', JSON.stringify({
+              city,
+              state,
+              temperature: data.weather.temperature,
+              condition: data.weather.condition
+            }));
+          } else {
+            const savedLocation = await AsyncStorage.getItem('@saved_location');
+            if (savedLocation) {
+              const { city, state } = JSON.parse(savedLocation);
+              const data = await loadLocationData(city, state);
+              updateLocationStates(data);
+            }
+          }
         } catch (error) {
-          console.error('Error saving location:', error);
+          console.error('Error loading location:', error);
         }
       };
 
-      saveLocation();
-    }
-  }, [route.params?.initialLocation]);
+      loadCurrentLocation();
+    }, [route.params?.initialLocation, loadLocationData, updateLocationStates])
+  );
 
   const handleNavigateToAdvices = () => {
     if (onAlertPress) {
@@ -109,14 +112,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   const handleNavigateToHistory = () => {
     navigation.navigate('AlertRecords', {
-      cityFilter: currentWeather.city,
-      stateFilter: currentWeather.state
+      cityFilter: locationData.city,
+      stateFilter: locationData.state
     });
   };
 
   const handleNavigateToEmergency = () => {
     navigation.navigate('Emergency');
   };
+
+  const hasActiveDisasters = locationData.activeDisasters.length > 0 &&
+    locationData.activeDisasters[0] !== 'Nenhum';
 
   const getWeatherIcon = (condition: string) => {
     const conditionLower = condition.toLowerCase();
@@ -135,18 +141,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     return 'sunny-outline';
   };
 
-  const getRiskColor = (level: string) => {
-    switch (level.toLowerCase()) {
-      case 'baixo':
-        return theme.colors.success;
-      case 'médio':
-        return theme.colors.warning;
-      case 'alto':
-        return theme.colors.error;
-      case 'crítico':
-        return '#DC2626'; // Vermelho mais intenso para situações críticas
+  const getDisasterIcon = (type: DisasterType) => {
+    switch (type) {
+      case 'Enchente':
+        return 'water';
+      case 'Deslizamento':
+        return 'warning';
+      case 'Seca':
+        return 'sunny';
+      case 'Incêndio':
+        return 'flame';
+      case 'Vendaval':
+        return 'thunderstorm';
       default:
-        return theme.colors.primary;
+        return 'alert-circle';
     }
   };
 
@@ -159,8 +167,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
       >
         <LocationHeader>
           <CityContainer>
-            <CityName>{currentWeather.city}</CityName>
-            <StateName>{currentWeather.state}</StateName>
+            <CityName>{locationData.city}</CityName>
+            <StateName>{locationData.state}</StateName>
           </CityContainer>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
@@ -169,9 +177,31 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             >
               <Ionicons name="time-outline" size={24} color={theme.colors.text} />
             </TouchableOpacity>
-            <TimeText>{currentWeather.time}</TimeText>
+            <TimeText>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</TimeText>
           </View>
         </LocationHeader>
+
+        {hasActiveDisasters && (
+          <ActiveDisastersSection>
+            <SectionTitle>DESASTRES ATIVOS</SectionTitle>
+            <DisasterGrid>
+              {locationData.activeDisasters.map((disaster, index) => {
+                const riskInfo = locationData.risks.currentRisks.find(risk => risk.type === disaster);
+                return (
+                  <DisasterCard key={index} level={riskInfo?.level || 'Médio'}>
+                    <DisasterIcon>
+                      <Ionicons name={getDisasterIcon(disaster)} size={24} color="#fff" />
+                    </DisasterIcon>
+                    <DisasterInfo>
+                      <DisasterType>{disaster}</DisasterType>
+                      <RiskLevelText>{riskInfo?.level || 'Médio'}</RiskLevelText>
+                    </DisasterInfo>
+                  </DisasterCard>
+                );
+              })}
+            </DisasterGrid>
+          </ActiveDisastersSection>
+        )}
 
         <WeatherCard>
           <WeatherHeader>
@@ -193,8 +223,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <MetricText>Chuva: {locationData.risks.rainLevel}</MetricText>
             </MetricItem>
             <MetricItem>
-              <Ionicons name="warning-outline" size={20} color={getRiskColor(locationData.risks.floodRisk)} />
-              <MetricText>Risco de Enchente: {locationData.risks.floodRisk}</MetricText>
+              <Ionicons name="thermometer-outline" size={20} color={theme.colors.primary} />
+              <MetricText>Umidade: {locationData.weather.humidity}%</MetricText>
             </MetricItem>
           </WeatherMetrics>
         </WeatherCard>
@@ -202,7 +232,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         <RiskSection>
           <SectionTitle>ÍNDICES DE RISCO</SectionTitle>
           <RiskGrid>
-            <RiskCard danger={locationData.risks.soilSaturation > '80%'}>
+            <RiskCard danger={parseInt(locationData.risks.soilSaturation) > 80}>
               <RiskIcon>
                 <Ionicons name="water" size={24} color="#fff" />
               </RiskIcon>
@@ -501,6 +531,61 @@ const AlertButton = styled.View`
   background-color: ${theme.colors.background};
   border-radius: 12px;
   border: 1.5px solid ${theme.colors.primary};
+`;
+
+const ActiveDisastersSection = styled.View`
+  margin-bottom: 20px;
+`;
+
+const DisasterGrid = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+`;
+
+interface DisasterCardProps {
+  level: string;
+}
+
+const DisasterCard = styled.View<DisasterCardProps>`
+  background-color: ${(props: DisasterCardProps) => getRiskColor(props.level)};
+  border-radius: 12px;
+  padding: 15px;
+  flex-direction: row;
+  align-items: center;
+  width: 48%;
+  elevation: 2;
+  shadow-color: #000;
+  shadow-offset: 0px 1px;
+  shadow-opacity: 0.20;
+  shadow-radius: 2.84px;
+`;
+
+const DisasterIcon = styled.View`
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  justify-content: center;
+  align-items: center;
+  margin-right: 12px;
+`;
+
+const DisasterInfo = styled.View`
+  flex: 1;
+`;
+
+const DisasterType = styled.Text`
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+`;
+
+const RiskLevelText = styled.Text`
+  color: #fff;
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
 `;
 
 export default DashboardScreen;
